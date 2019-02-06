@@ -1,32 +1,33 @@
-#!/bin/sh
+#Install Mosquitto
 
-indent() {
-    sed -u 's/^/       /'
-}
-
-cwd=`pwd`
 cd $1
-echo "-----> Building mosquitto and installing to $1"
-# Make sure we can properly find ares_build.h... sigh.
-if [ -f $1/.apt/usr/include/x86_64-linux-gnu/ares_build.h ]; then
-    cp $1/.apt/usr/include/x86_64-linux-gnu/ares_build.h $1/.apt/usr/include/
-fi
 
-# Download and install mosquitto
-wget http://mosquitto.org/files/source/mosquitto-1.5.5.tar.gz > /dev/null 2>&1
-tar zxf mosquitto-1.5.5.tar.gz
-cd mosquitto-1.5.5/
-cmake -DARES_HEADER=$1/.apt/usr/include -DCMAKE_INSTALL_PREFIX=$1 . | indent
-make install 2>&1 | indent
+echo "Getting mosquitto-1.5.tar.gz..."
 
-export PATH=$PATH\:$1/bin:$1/sbin
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH\:$1/lib
+wget http://mosquitto.org/files/source/mosquitto-1.5.tar.gz
 
-echo "-----> Setting MQTT_HOME environment variable"
-cd $cwd
-cat > ${HOME}/.profile.d/mqtt.sh << EOF
-export MQTT_HOME=$1/bin
-export LD_LIBRARY_PATH=$1/lib:$LD_LIBRARY_PATH
+echo "Unpacking mosquitto-1.5.tar.gz..."
+tar -xf mosquitto-1.5.tar.gz
+
+echo "Installing Mosquitto 1.5..."
+cd mosquitto-1.5
+sed -i -e "s/WITH_UUID\:\=yes/WITH_UUID\:\=no/" ./config.mk
+make -s
+
+cat > $1/mosquitto_ws.conf << EOF
+listener 1883
+protocol mqtt
 EOF
-echo "-----> Contents of .profile.d:"
-ls -C ${HOME}/.profile.d | indent
+
+echo "Writing profile.d/mqtt.sh..."
+
+export MQTT_HOME=$(pwd)
+
+cat > $HOME/.profile.d/mqtt.sh << EOF
+export PATH=$MQTT_HOME/src/:$PATH
+export PATH=$MQTT_HOME/client/:$PATH
+EOF
+
+echo "Starting Server..."
+src/mosquitto -v -c $1/mosquitto_ws.conf &
+echo "Server Started..."

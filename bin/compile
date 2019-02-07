@@ -15,7 +15,7 @@ sed -i -e "s/WITH_UUID\:\=yes/WITH_UUID\:\=no/" ./config.mk
 make -s
 
 cat > $1/mosquitto_ws.conf << EOF
-listener 1883
+listener process.env.PORT || 1883
 protocol mqtt
 EOF
 
